@@ -75,7 +75,7 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 	if countHandgunAmmo < handgunAmmo then
 		-- Calculate how many stacks of ammo to craft
-		local numStacksToCraft = math.ceil((handgunAmmo - countHandgunAmmo) / 30)
+		local numStacksToCraft = math.ceil((handgunAmmo - countHandgunAmmo) / stackHandgunAmmo)
 		-- Calculate the total cost of materials for the crafted stacks
 		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
 		-- Check if the player has enough common material to craft the stacks
@@ -95,7 +95,7 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 	if countRifleAmmo < rifleAmmo then
 		-- Calculate how many stacks of ammo to craft
-		local numStacksToCraft = math.ceil((rifleAmmo - countRifleAmmo) / 30)
+		local numStacksToCraft = math.ceil((rifleAmmo - countRifleAmmo) / stackRifleAmmo)
 		-- Calculate the total cost of materials for the crafted stacks
 		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
 		-- Check if the player has enough common material to craft the stacks
@@ -115,7 +115,7 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 	if countShotgunAmmo < shotgunAmmo then
 		-- Calculate how many stacks of ammo to craft
-		local numStacksToCraft = math.ceil((shotgunAmmo - countShotgunAmmo) / 30)
+		local numStacksToCraft = math.ceil((shotgunAmmo - countShotgunAmmo) / stackShotgunAmmo)
 		-- Calculate the total cost of materials for the crafted stacks
 		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
 		-- Check if the player has enough common material to craft the stacks
@@ -135,7 +135,7 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 	if countSniperRifleAmmo < sniperRifleAmmo then
 		-- Calculate how many stacks of ammo to craft
-		local numStacksToCraft = math.ceil((sniperRifleAmmo - countSniperRifleAmmo) / 30)
+		local numStacksToCraft = math.ceil((sniperRifleAmmo - countSniperRifleAmmo) / stackSniperRifleAmmo)
 		-- Calculate the total cost of materials for the crafted stacks
 		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
 		-- Check if the player has enough common material to craft the stacks
