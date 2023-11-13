@@ -1,9 +1,10 @@
 ------------------------------------------------
 -- User Configureable, select how many bullets u want to be in storage (Includes magazine).
+-- For the Amout of ammo, its recommended to leave as is.
 ------------------------------------------------
 handgunAmmo = 420
-rifleAmmo = 312
-shotgunAmmo = 213
+rifleAmmo = 213
+shotgunAmmo = 111
 sniperRifleAmmo = 111
 
 autoConvertTime = 13 --< How often (in sec) to check for items to craft  (default: 13).
