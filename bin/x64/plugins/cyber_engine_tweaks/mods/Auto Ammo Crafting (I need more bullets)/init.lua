@@ -3,9 +3,9 @@
 -- For the Amout of ammo, its recommended to leave as is.
 ------------------------------------------------
 handgunAmmo = 420
-rifleAmmo = 213
+rifleAmmo = 420
 shotgunAmmo = 111
-sniperRifleAmmo = 111
+sniperRifleAmmo = 66
 
 autoConvertTime = 13 --< How often (in sec) to check for items to craft  (default: 13).
 ------------------------------------------------
