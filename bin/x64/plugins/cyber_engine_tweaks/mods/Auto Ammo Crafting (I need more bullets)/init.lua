@@ -7,7 +7,7 @@ rifleAmmo = 420
 shotgunAmmo = 111
 sniperRifleAmmo = 66
 
-autoConvertTime = 13 --< How often (in sec) to check for items to craft  (default: 13).
+autoConvertTime = 6 --< How often (in sec) to check for items to craft  (default: 6).
 ------------------------------------------------
 -- END OF USER CONFIGURARBLE VARIABLES! DONT EDIT ANYTHING BELOW THIS POINT!
 ------------------------------------------------
