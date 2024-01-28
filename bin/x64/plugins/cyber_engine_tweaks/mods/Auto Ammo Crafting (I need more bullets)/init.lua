@@ -1,16 +1,108 @@
-------------------------------------------------
--- User Configureable, select how many bullets u want to be in storage (Includes magazine).
--- For the Amout of ammo, its recommended to leave as is.
-------------------------------------------------
-handgunAmmo = 420
-rifleAmmo = 420
-shotgunAmmo = 111
-sniperRifleAmmo = 69
+local defaultSettings = {
+    handgunAmmo = 420,
+    rifleAmmo = 420,
+    shotgunAmmo = 111,
+    sniperRifleAmmo = 69,
+    autoConvertTime = 6,
+	combatCheck = false
+}
 
-autoConvertTime = 6 --< How often (in sec) to check for items to craft  (default: 6).
-------------------------------------------------
--- END OF USER CONFIGURARBLE VARIABLES! DONT EDIT ANYTHING BELOW THIS POINT!
-------------------------------------------------
+local settings = {}
+local renderUIEnabled = false
+
+function saveSettings()
+    local orderedSettings = {}
+    for key, _ in pairs(defaultSettings) do
+        orderedSettings[key] = settings[key]
+    end
+    
+    local file = io.open("settings.json", "w")
+    if file then
+        file:write(json.encode(orderedSettings))
+        file:close()
+    end
+end
+
+function loadSettings()
+    local ok = pcall(function()
+        local file = io.open("settings.json", "r")
+        if file then
+            local configText = file:read("*a")
+            file:close()
+
+            local config = json.decode(configText)
+            settings.handgunAmmo = config.handgunAmmo or defaultSettings.handgunAmmo
+            settings.rifleAmmo = config.rifleAmmo or defaultSettings.rifleAmmo
+            settings.shotgunAmmo = config.shotgunAmmo or defaultSettings.shotgunAmmo
+            settings.sniperRifleAmmo = config.sniperRifleAmmo or defaultSettings.sniperRifleAmmo
+            settings.autoConvertTime = config.autoConvertTime or defaultSettings.autoConvertTime
+			settings.combatCheck = config.combatCheck or defaultSettings.combatCheck
+        else
+            saveSettings()
+        end
+    end)
+
+    if not ok then
+        saveSettings()
+    end
+end
+
+loadSettings()
+
+function renderUI()
+    ImGui.Begin("About to fucking nuaahahhahahahh hhaa")
+
+    ImGui.PushItemWidth(100)
+
+    local newHandgunAmmo, handgunAmmoChanged = ImGui.DragInt("Handgun Ammo", settings.handgunAmmo, 1, 1, 1000)
+    local newRifleAmmo, rifleAmmoChanged = ImGui.DragInt("Rifle Ammo", settings.rifleAmmo, 1, 1, 1000)
+    local newShotgunAmmo, shotgunAmmoChanged = ImGui.DragInt("Shotgun Ammo", settings.shotgunAmmo, 1, 1, 1000)
+    local newSniperRifleAmmo, sniperRifleAmmoChanged = ImGui.DragInt("Sniper Rifle Ammo", settings.sniperRifleAmmo, 1, 1, 1000)
+    local newAutoConvertTime, autoConvertTimeChanged = ImGui.DragFloat("Auto Convert Time", settings.autoConvertTime, 0.1, 1, 60, "%.1f")
+	local newCombatCheck, combatCheckChanged = ImGui.Checkbox("Dont Craft in Comabt", settings.combatCheck)
+
+    ImGui.PopItemWidth()
+
+    if handgunAmmoChanged then
+        settings.handgunAmmo = newHandgunAmmo
+    end
+    if rifleAmmoChanged then
+        settings.rifleAmmo = newRifleAmmo
+    end
+    if shotgunAmmoChanged then
+        settings.shotgunAmmo = newShotgunAmmo
+    end
+    if sniperRifleAmmoChanged then
+        settings.sniperRifleAmmo = newSniperRifleAmmo
+    end
+    if autoConvertTimeChanged then
+        settings.autoConvertTime = newAutoConvertTime
+    end
+	if combatCheckChanged then
+		settings.combatCheck = newCombatCheck
+	end
+
+    if ImGui.Button("Save") then
+        saveSettings()
+    end
+
+    ImGui.End()
+end
+
+local renderUIEnabled = false
+registerForEvent("onOverlayOpen", function()
+    renderUIEnabled = true
+end)
+
+registerForEvent("onOverlayClose", function()
+    renderUIEnabled = false
+end)
+
+registerForEvent("onDraw", function()
+	if renderUIEnabled then
+        renderUI()
+    end
+end)
 
 ------------------------------------------------
 -- Variables.
@@ -23,6 +115,10 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 -- CHECK GOOD TO GO ... | Credits to: sensei27
 ------------------------------------------------
+	if settings.combatCheck and inCombat then
+		pauseTime = os.time() + 3
+		return
+	end
 	if pauseTime > os.time() then
 		return
 	end
@@ -58,7 +154,7 @@ registerForEvent("onUpdate", function(deltaTime)
 -- Ready for take off.
 ------------------------------------------------
 	scriptInterval = scriptInterval + deltaTime
-	if scriptInterval < autoConvertTime then
+	if scriptInterval < settings.autoConvertTime then
 		return
 	else
 		scriptInterval = 0
@@ -74,17 +170,12 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 -- Handgun Ammo Crafting.
 ------------------------------------------------
-	if countHandgunAmmo < handgunAmmo then
-		-- Calculate how many stacks of ammo to craft
-		local numStacksToCraft = math.ceil((handgunAmmo - countHandgunAmmo) / stackHandgunAmmo)
-		-- Calculate the total cost of materials for the crafted stacks
+	if countHandgunAmmo < settings.handgunAmmo then
+		local numStacksToCraft = math.ceil((settings.handgunAmmo - countHandgunAmmo) / stackHandgunAmmo)
 		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
-		-- Check if the player has enough common material to craft the stacks
 		if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
-			-- Craft all the ammo stacks at once and add to totalHandgunAmmo
 			local totalHandgunAmmo = numStacksToCraft * stackHandgunAmmo
 			Game.AddToInventory("Ammo.HandgunAmmo", totalHandgunAmmo)
-			-- Remove the used common materials
 			ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
 			-- local totalXPGained = numStacksToCraft * stackXP
 			-- Add crafting XP
@@ -94,17 +185,12 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 -- Rifle Ammo Crafting.
 ------------------------------------------------
-	if countRifleAmmo < rifleAmmo then
-		-- Calculate how many stacks of ammo to craft
-		local numStacksToCraft = math.ceil((rifleAmmo - countRifleAmmo) / stackRifleAmmo)
-		-- Calculate the total cost of materials for the crafted stacks
+	if countRifleAmmo < settings.rifleAmmo then
+		local numStacksToCraft = math.ceil((settings.rifleAmmo - countRifleAmmo) / stackRifleAmmo)
 		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
-		-- Check if the player has enough common material to craft the stacks
 		if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
-			-- Craft all the ammo stacks at once
 			local totalRifleAmmo = numStacksToCraft * stackRifleAmmo
 			Game.AddToInventory("Ammo.RifleAmmo", totalRifleAmmo)
-			-- Remove the used common materials
 			ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
 			-- local totalXPGained = numStacksToCraft * stackXP
 			-- Add crafting XP
@@ -114,17 +200,12 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 -- Shotgun Ammo Crafting.
 ------------------------------------------------
-	if countShotgunAmmo < shotgunAmmo then
-		-- Calculate how many stacks of ammo to craft
-		local numStacksToCraft = math.ceil((shotgunAmmo - countShotgunAmmo) / stackShotgunAmmo)
-		-- Calculate the total cost of materials for the crafted stacks
+	if countShotgunAmmo < settings.shotgunAmmo then
+		local numStacksToCraft = math.ceil((settings.shotgunAmmo - countShotgunAmmo) / stackShotgunAmmo)
 		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
-		-- Check if the player has enough common material to craft the stacks
 		if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
-			-- Craft all the ammo stacks at once
 			local totalShotgunAmmo = numStacksToCraft * stackShotgunAmmo
 			Game.AddToInventory("Ammo.ShotgunAmmo", totalShotgunAmmo)
-			-- Remove the used common materials
 			ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
 			-- local totalXPGained = numStacksToCraft * stackXP
 			-- Add crafting XP
@@ -134,17 +215,12 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 -- Sniper Ammo Crafting.
 ------------------------------------------------
-	if countSniperRifleAmmo < sniperRifleAmmo then
-		-- Calculate how many stacks of ammo to craft
-		local numStacksToCraft = math.ceil((sniperRifleAmmo - countSniperRifleAmmo) / stackSniperRifleAmmo)
-		-- Calculate the total cost of materials for the crafted stacks
+	if countSniperRifleAmmo < settings.sniperRifleAmmo then
+		local numStacksToCraft = math.ceil((settings.sniperRifleAmmo - countSniperRifleAmmo) / stackSniperRifleAmmo)
 		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
-		-- Check if the player has enough common material to craft the stacks
 		if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
-			-- Craft all the ammo stacks at once
 			local totalSniperRifleAmmo = numStacksToCraft * stackSniperRifleAmmo
 			Game.AddToInventory("Ammo.SniperRifleAmmo", totalSniperRifleAmmo)
-			-- Remove the used common materials
 			ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
 			-- local totalXPGained = numStacksToCraft * stackXP
 			-- Add crafting XP
@@ -155,6 +231,13 @@ end)
 ------------------------------------------------
 -- Utility Functions | Most Credits to: sensei27
 ------------------------------------------------
+inCombat = false
+registerForEvent("onInit", function()
+	Observe("PlayerPuppet", "OnCombatStateChanged", function(self,state)
+		inCombat = state == 1
+	end)
+end)
+
 function notReady()
 	inkMenuScenario = GetSingleton('inkMenuScenario'):GetSystemRequestsHandler()
 	if inkMenuScenario:IsGamePaused() or inkMenuScenario:IsPreGame() then
