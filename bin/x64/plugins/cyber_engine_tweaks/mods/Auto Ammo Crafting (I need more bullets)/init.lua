@@ -4,7 +4,9 @@ local defaultSettings = {
     shotgunAmmo = 111,
     sniperRifleAmmo = 69,
     autoConvertTime = 6,
-	combatCheck = false
+	buyAmmoCheck = true,
+	combatCheck = false,
+	emptyAmmoCheck = false
 }
 
 local settings = {}
@@ -36,8 +38,18 @@ function loadSettings()
             settings.shotgunAmmo = config.shotgunAmmo or defaultSettings.shotgunAmmo
             settings.sniperRifleAmmo = config.sniperRifleAmmo or defaultSettings.sniperRifleAmmo
             settings.autoConvertTime = config.autoConvertTime or defaultSettings.autoConvertTime
+			settings.buyAmmoCheck = config.buyAmmoCheck or defaultSettings.buyAmmoCheck
 			settings.combatCheck = config.combatCheck or defaultSettings.combatCheck
+			settings.emptyAmmoCheck = config.emptyAmmoCheck or defaultSettings.emptyAmmoCheck
         else
+			settings.handgunAmmo = defaultSettings.handgunAmmo
+			settings.rifleAmmo = defaultSettings.rifleAmmo
+			settings.shotgunAmmo = defaultSettings.shotgunAmmo
+			settings.sniperRifleAmmo = defaultSettings.sniperRifleAmmo
+			settings.autoConvertTime = defaultSettings.autoConvertTime
+			settings.buyAmmoCheck = defaultSettings.buyAmmoCheck
+			settings.combatCheck = defaultSettings.combatCheck
+			settings.emptyAmmoCheck = defaultSettings.emptyAmmoCheck
             saveSettings()
         end
     end)
@@ -50,41 +62,75 @@ end
 loadSettings()
 
 function renderUI()
+	ImGui.SetNextWindowSizeConstraints(313, 313, 420, 666)
+
     ImGui.Begin("Auto Ammo Crafting (I need more bullets)")
 
-    ImGui.PushItemWidth(100)
+	ImGui.PushItemWidth(113)
+
+    if ImGui.Button("Force Save") then
+        saveSettings()
+    end
+
+	ImGui.SameLine()
+
+	if ImGui.Button("Default Settings") then
+		settings.handgunAmmo = defaultSettings.handgunAmmo
+		settings.rifleAmmo = defaultSettings.rifleAmmo
+		settings.shotgunAmmo = defaultSettings.shotgunAmmo
+		settings.sniperRifleAmmo = defaultSettings.sniperRifleAmmo
+		settings.autoConvertTime = defaultSettings.autoConvertTime
+		settings.buyAmmoCheck = defaultSettings.buyAmmoCheck
+		settings.combatCheck = defaultSettings.combatCheck
+		settings.emptyAmmoCheck = defaultSettings.emptyAmmoCheck
+		saveSettings()
+    end
+
+    ImGui.Separator()
 
     local newHandgunAmmo, handgunAmmoChanged = ImGui.DragInt("Handgun Ammo", settings.handgunAmmo, 1, 1, 1000)
     local newRifleAmmo, rifleAmmoChanged = ImGui.DragInt("Rifle Ammo", settings.rifleAmmo, 1, 1, 1000)
     local newShotgunAmmo, shotgunAmmoChanged = ImGui.DragInt("Shotgun Ammo", settings.shotgunAmmo, 1, 1, 1000)
     local newSniperRifleAmmo, sniperRifleAmmoChanged = ImGui.DragInt("Sniper Rifle Ammo", settings.sniperRifleAmmo, 1, 1, 1000)
     local newAutoConvertTime, autoConvertTimeChanged = ImGui.DragFloat("Auto Convert Time", settings.autoConvertTime, 0.1, 1, 60, "%.1f")
+	local newBuyAmmoCheck, buyAmmoCheckChanged = ImGui.Checkbox("Buy ammo if Comps are empty", settings.buyAmmoCheck)
 	local newCombatCheck, combatCheckChanged = ImGui.Checkbox("Dont Craft in Comabt", settings.combatCheck)
+	local newEmptyAmmoCheck, emptyAmmoCheckChanged = ImGui.Checkbox("Wait until ammo type is empty", settings.emptyAmmoCheck)
 
     ImGui.PopItemWidth()
 
     if handgunAmmoChanged then
         settings.handgunAmmo = newHandgunAmmo
+		saveSettings()
     end
     if rifleAmmoChanged then
         settings.rifleAmmo = newRifleAmmo
+		saveSettings()
     end
     if shotgunAmmoChanged then
         settings.shotgunAmmo = newShotgunAmmo
+		saveSettings()
     end
     if sniperRifleAmmoChanged then
         settings.sniperRifleAmmo = newSniperRifleAmmo
+		saveSettings()
     end
     if autoConvertTimeChanged then
         settings.autoConvertTime = newAutoConvertTime
+		saveSettings()
     end
+	if buyAmmoCheckChanged then
+		settings.buyAmmoCheck = newBuyAmmoCheck
+		saveSettings()
+	end
+	if emptyAmmoCheckChanged then
+		settings.emptyAmmoCheck = newEmptyAmmoCheck
+		saveSettings()
+	end
 	if combatCheckChanged then
 		settings.combatCheck = newCombatCheck
+		saveSettings()
 	end
-
-    if ImGui.Button("Save") then
-        saveSettings()
-    end
 
     ImGui.End()
 end
@@ -104,9 +150,6 @@ registerForEvent("onDraw", function()
     end
 end)
 
-------------------------------------------------
--- Variables.
-------------------------------------------------
 firstRun = true
 pauseTime = os.time()
 scriptInterval = 0
@@ -115,11 +158,11 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 -- CHECK GOOD TO GO ... | Credits to: sensei27
 ------------------------------------------------
-	if settings.combatCheck and inCombat then
-		pauseTime = os.time() + 3
+	if pauseTime > os.time() then
 		return
 	end
-	if pauseTime > os.time() then
+	if settings.combatCheck and inCombat then
+		pauseTime = os.time() + 3
 		return
 	end
 	if notReady() then
@@ -140,6 +183,7 @@ registerForEvent("onUpdate", function(deltaTime)
 		idShotgunAmmo = GetSingleton("gameItemID"):FromTDBID(TweakDBID.new("Ammo.ShotgunAmmo"))
 		idSniperRifleAmmo = GetSingleton("gameItemID"):FromTDBID(TweakDBID.new("Ammo.SniperRifleAmmo"))
 		idCommonMaterial = GetSingleton("gameItemID"):FromTDBID(TweakDBID.new("Items.CommonMaterial1"))
+		idMoneyItem = GetSingleton("gameItemID"):FromTDBID(TweakDBID.new("Items.money"))
 		stackHandgunAmmo = 30
 		stackRifleAmmo = 30
 		stackShotgunAmmo = 10
@@ -170,61 +214,101 @@ registerForEvent("onUpdate", function(deltaTime)
 ------------------------------------------------
 -- Handgun Ammo Crafting.
 ------------------------------------------------
-	if countHandgunAmmo < settings.handgunAmmo then
-		local numStacksToCraft = math.ceil((settings.handgunAmmo - countHandgunAmmo) / stackHandgunAmmo)
-		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
-		if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
+	if settings.emptyAmmoCheck and countHandgunAmmo ~= 0 then
+		pauseTime = os.time() + 3
+	else
+		if countHandgunAmmo < settings.handgunAmmo then
+			local numStacksToCraft = math.ceil((settings.handgunAmmo - countHandgunAmmo) / stackHandgunAmmo)
+			local totalMaterialCost = numStacksToCraft * stackCommonMaterial
 			local totalHandgunAmmo = numStacksToCraft * stackHandgunAmmo
-			Game.AddToInventory("Ammo.HandgunAmmo", totalHandgunAmmo)
-			ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
-			-- local totalXPGained = numStacksToCraft * stackXP
-			-- Add crafting XP
-			-- Game.AddExp("Crafting", totalXPGained)
+			if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
+				Game.AddToInventory("Ammo.HandgunAmmo", totalHandgunAmmo)
+				ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
+				-- local totalXPGained = numStacksToCraft * stackXP
+				-- Add crafting XP
+				-- Game.AddExp("Crafting", totalXPGained)
+			else
+				if settings.buyAmmoCheck then
+					local moneyCost = -totalHandgunAmmo * 4
+					Game.AddToInventory("Ammo.HandgunAmmo", totalHandgunAmmo)
+					ts:GiveItem(player, idMoneyItem, moneyCost)
+				end
+			end
 		end
 	end
 ------------------------------------------------
 -- Rifle Ammo Crafting.
 ------------------------------------------------
-	if countRifleAmmo < settings.rifleAmmo then
-		local numStacksToCraft = math.ceil((settings.rifleAmmo - countRifleAmmo) / stackRifleAmmo)
-		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
-		if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
-			local totalRifleAmmo = numStacksToCraft * stackRifleAmmo
-			Game.AddToInventory("Ammo.RifleAmmo", totalRifleAmmo)
-			ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
-			-- local totalXPGained = numStacksToCraft * stackXP
-			-- Add crafting XP
-			-- Game.AddExp("Crafting", totalXPGained)
+	if settings.emptyAmmoCheck and countRifleAmmo ~= 0 then
+		pauseTime = os.time() + 3
+	else
+		if countRifleAmmo < settings.rifleAmmo then
+			local numStacksToCraft = math.ceil((settings.rifleAmmo - countRifleAmmo) / stackRifleAmmo)
+			local totalMaterialCost = numStacksToCraft * stackCommonMaterial
+			if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
+				local totalRifleAmmo = numStacksToCraft * stackRifleAmmo
+				Game.AddToInventory("Ammo.RifleAmmo", totalRifleAmmo)
+				ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
+				-- local totalXPGained = numStacksToCraft * stackXP
+				-- Add crafting XP
+				-- Game.AddExp("Crafting", totalXPGained)
+			else
+				if settings.buyAmmoCheck then
+					local moneyCost = -totalRifleAmmo * 4
+					Game.AddToInventory("Ammo.RifleAmmo", totalRifleAmmo)
+					ts:GiveItem(player, idMoneyItem, moneyCost)
+				end
+			end
 		end
 	end
 ------------------------------------------------
 -- Shotgun Ammo Crafting.
 ------------------------------------------------
-	if countShotgunAmmo < settings.shotgunAmmo then
-		local numStacksToCraft = math.ceil((settings.shotgunAmmo - countShotgunAmmo) / stackShotgunAmmo)
-		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
-		if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
-			local totalShotgunAmmo = numStacksToCraft * stackShotgunAmmo
-			Game.AddToInventory("Ammo.ShotgunAmmo", totalShotgunAmmo)
-			ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
-			-- local totalXPGained = numStacksToCraft * stackXP
-			-- Add crafting XP
-			-- Game.AddExp("Crafting", totalXPGained)
+	if settings.emptyAmmoCheck and countShotgunAmmo ~= 0 then
+		pauseTime = os.time() + 3
+	else
+		if countShotgunAmmo < settings.shotgunAmmo then
+			local numStacksToCraft = math.ceil((settings.shotgunAmmo - countShotgunAmmo) / stackShotgunAmmo)
+			local totalMaterialCost = numStacksToCraft * stackCommonMaterial
+			if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
+				local totalShotgunAmmo = numStacksToCraft * stackShotgunAmmo
+				Game.AddToInventory("Ammo.ShotgunAmmo", totalShotgunAmmo)
+				ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
+				-- local totalXPGained = numStacksToCraft * stackXP
+				-- Add crafting XP
+				-- Game.AddExp("Crafting", totalXPGained)
+			else
+				if settings.buyAmmoCheck then
+					local moneyCost = -totalShotgunAmmo * 4
+					Game.AddToInventory("Ammo.ShotgunAmmo", totalShotgunAmmo)
+					ts:GiveItem(player, idMoneyItem, moneyCost)
+				end
+			end
 		end
 	end
 ------------------------------------------------
 -- Sniper Ammo Crafting.
 ------------------------------------------------
-	if countSniperRifleAmmo < settings.sniperRifleAmmo then
-		local numStacksToCraft = math.ceil((settings.sniperRifleAmmo - countSniperRifleAmmo) / stackSniperRifleAmmo)
-		local totalMaterialCost = numStacksToCraft * stackCommonMaterial
-		if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
-			local totalSniperRifleAmmo = numStacksToCraft * stackSniperRifleAmmo
-			Game.AddToInventory("Ammo.SniperRifleAmmo", totalSniperRifleAmmo)
-			ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
-			-- local totalXPGained = numStacksToCraft * stackXP
-			-- Add crafting XP
-			-- Game.AddExp("Crafting", totalXPGained)
+	if settings.emptyAmmoCheck and countSniperRifleAmmo ~= 0 then
+		pauseTime = os.time() + 3
+	else
+		if countSniperRifleAmmo < settings.sniperRifleAmmo then
+			local numStacksToCraft = math.ceil((settings.sniperRifleAmmo - countSniperRifleAmmo) / stackSniperRifleAmmo)
+			local totalMaterialCost = numStacksToCraft * stackCommonMaterial
+			if ts:GetItemQuantity(player, idCommonMaterial) >= totalMaterialCost then
+				local totalSniperRifleAmmo = numStacksToCraft * stackSniperRifleAmmo
+				Game.AddToInventory("Ammo.SniperRifleAmmo", totalSniperRifleAmmo)
+				ts:RemoveItem(player, idCommonMaterial, totalMaterialCost)
+				-- local totalXPGained = numStacksToCraft * stackXP
+				-- Add crafting XP
+				-- Game.AddExp("Crafting", totalXPGained)
+			else
+				if settings.buyAmmoCheck then
+					local moneyCost = -totalSniperRifleAmmo * 4
+					Game.AddToInventory("Ammo.SniperRifleAmmo", totalSniperRifleAmmo)
+					ts:GiveItem(player, idMoneyItem, moneyCost)
+				end
+			end
 		end
 	end
 end)
