@@ -50,7 +50,7 @@ end
 loadSettings()
 
 function renderUI()
-    ImGui.Begin("About to fucking nuaahahhahahahh hhaa")
+    ImGui.Begin("Auto Ammo Crafting (I need more bullets)")
 
     ImGui.PushItemWidth(100)
 
